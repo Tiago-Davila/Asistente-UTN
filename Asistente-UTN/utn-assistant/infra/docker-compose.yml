@@ -1,0 +1,115 @@
+version: "3.9"
+
+# UTN Assistant — Local Docker Compose stack
+#
+# Services:
+#   chromadb  — persistent vector store
+#   ollama    — local LLM + embedding inference
+#   api       — FastAPI query/admin service
+#   scraper   — one-shot scraper worker (run manually or via cron)
+#   processor — one-shot index processor worker (run manually or via cron)
+#
+# Usage:
+#   docker compose up -d chromadb ollama    # start dependencies first
+#   docker compose up -d api               # start the API service
+#   docker compose run --rm scraper         # run a scrape pass
+#   docker compose run --rm processor       # run an index pass
+
+services:
+  # --------------------------------------------------------------------------
+  # ChromaDB — persistent vector store (FR-003, research.md §ChromaDB)
+  # --------------------------------------------------------------------------
+  chromadb:
+    image: chromadb/chroma:latest
+    restart: unless-stopped
+    ports:
+      - "8001:8000"
+    volumes:
+      - chromadb_data:/chroma/chroma
+    environment:
+      ANONYMIZED_TELEMETRY: "false"
+
+  # --------------------------------------------------------------------------
+  # Ollama — local LLM inference (FR-022, research.md §Local-only stack)
+  # --------------------------------------------------------------------------
+  ollama:
+    image: ollama/ollama:latest
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_models:/root/.ollama
+    # GPU support (uncomment if NVIDIA runtime is available):
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
+
+  # --------------------------------------------------------------------------
+  # API — FastAPI service (Phase 5)
+  # --------------------------------------------------------------------------
+  api:
+    build:
+      context: ..
+      dockerfile: utn-assistant/infra/Dockerfile.api
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    env_file:
+      - ../.env
+    environment:
+      CHROMADB_PATH: /data/chromadb
+      OLLAMA_BASE_URL: http://ollama:11434/v1
+    volumes:
+      - chromadb_data:/data/chromadb
+      - ./sources.yaml:/app/config/sources.yaml:ro
+    depends_on:
+      - chromadb
+      - ollama
+
+  # --------------------------------------------------------------------------
+  # Scraper worker — run on demand (FR-011, FR-014, FR-023)
+  # --------------------------------------------------------------------------
+  scraper:
+    build:
+      context: ..
+      dockerfile: utn-assistant/infra/Dockerfile.api
+    command: ["python", "-m", "scraper.run"]
+    env_file:
+      - ../.env
+    environment:
+      CHROMADB_PATH: /data/chromadb
+      SOURCES_CONFIG_PATH: /app/config/sources.yaml
+    volumes:
+      - chromadb_data:/data/chromadb
+      - ./sources.yaml:/app/config/sources.yaml:ro
+    depends_on:
+      - chromadb
+    profiles:
+      - workers
+
+  # --------------------------------------------------------------------------
+  # Processor worker — run on demand (FR-015, FR-016, FR-017)
+  # --------------------------------------------------------------------------
+  processor:
+    build:
+      context: ..
+      dockerfile: utn-assistant/infra/Dockerfile.api
+    command: ["python", "-m", "processor.index_loader"]
+    env_file:
+      - ../.env
+    environment:
+      CHROMADB_PATH: /data/chromadb
+    volumes:
+      - chromadb_data:/data/chromadb
+    depends_on:
+      - chromadb
+    profiles:
+      - workers
+
+volumes:
+  chromadb_data:
+  ollama_models:
