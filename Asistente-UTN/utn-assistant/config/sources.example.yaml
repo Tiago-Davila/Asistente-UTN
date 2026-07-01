@@ -1,0 +1,60 @@
+# UTN Assistant — Example source configuration
+#
+# Copy this file to sources.yaml, fill in real UTN URLs, and set
+# SOURCES_CONFIG_PATH to point to it.  No code changes are needed to
+# add or remove sources (FR-011).
+#
+# Fields per source:
+#   id                  - Stable identifier (slug, unique).
+#   url                 - Public page or section URL.
+#   title_hint          - Optional human-readable title hint.
+#   area                - One of: ACADEMICA, ADMINISTRATIVA, BIENESTAR, EXTENSION
+#   regional            - Optional regional name (e.g. "Regional Buenos Aires").
+#   department          - Optional department name.
+#   source_type         - WEB (only supported type in v1).
+#   active              - Whether this source is included in update runs.
+#   requires_javascript - Set to true only for pages that need browser rendering.
+#   crawl_delay_seconds - Optional per-source override; defaults to global setting.
+#   include_patterns    - Optional list of URL path patterns to include.
+#   exclude_patterns    - Optional list of URL path patterns to exclude.
+
+sources:
+  - id: utn-rectorado-academica
+    url: https://www.utn.edu.ar/es/secretaria-academica
+    title_hint: "Secretaría Académica — UTN Rectorado"
+    area: ACADEMICA
+    regional: Rectorado
+    source_type: WEB
+    active: true
+    requires_javascript: false
+    crawl_delay_seconds: 1.5
+    exclude_patterns:
+      - /noticias/
+      - /eventos/
+
+  - id: utn-rectorado-bienestar
+    url: https://www.utn.edu.ar/es/secretaria-bienestar
+    title_hint: "Secretaría de Bienestar Universitario — UTN Rectorado"
+    area: BIENESTAR
+    regional: Rectorado
+    source_type: WEB
+    active: true
+    requires_javascript: false
+
+  - id: utn-frba-academica
+    url: https://www.frba.utn.edu.ar/academica/
+    title_hint: "Área Académica — UTN FRBA"
+    area: ACADEMICA
+    regional: "Regional Buenos Aires"
+    source_type: WEB
+    active: true
+    requires_javascript: false
+
+  - id: utn-frba-extension
+    url: https://www.frba.utn.edu.ar/extension/
+    title_hint: "Extensión Universitaria — UTN FRBA"
+    area: EXTENSION
+    regional: "Regional Buenos Aires"
+    source_type: WEB
+    active: false
+    requires_javascript: false
