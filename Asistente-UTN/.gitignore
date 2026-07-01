@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+*.egg-info/
+dist/
+build/
+
+# Environment files
+.env
+.env.*
+!.env.example
+!utn-assistant/.env.example
+
+# Test & coverage
+.pytest_cache/
+.coverage
+htmlcov/
+coverage.xml
+
+# ChromaDB local data
+data/
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.swp
+*.log
