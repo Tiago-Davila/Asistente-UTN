@@ -1,0 +1,2 @@
+# OpenCode local tooling — never commit node_modules
+.opencode/node_modules/

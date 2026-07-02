@@ -1,0 +1,339 @@
+openapi: 3.1.0
+info:
+  title: UTN Institutional Assistant API
+  version: 0.1.0
+  description: >
+    Contract for the initial local UTN institutional assistant. This is a
+    planning artifact only and does not implement API behavior.
+servers:
+  - url: http://localhost:8000
+    description: Local development server
+tags:
+  - name: query
+  - name: index
+  - name: health
+paths:
+  /query:
+    post:
+      tags: [query]
+      summary: Answer an institutional question
+      operationId: queryAssistant
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QueryRequest"
+            examples:
+              basic:
+                value:
+                  question: "Cuando son las fechas de inscripcion?"
+              filtered:
+                value:
+                  question: "Como hago para anotarme a una mesa de examen?"
+                  area: ACADEMICA
+      responses:
+        "200":
+          description: Answer or insufficient-context refusal
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QueryResponse"
+        "400":
+          description: Invalid question or filter
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "503":
+          description: Index or local generation dependency unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /index/status:
+    get:
+      tags: [index]
+      summary: Get current index status
+      operationId: getIndexStatus
+      responses:
+        "200":
+          description: Current searchable corpus status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IndexStatus"
+  /index/rebuild:
+    post:
+      tags: [index]
+      summary: Start a full or selected-source index update
+      operationId: rebuildIndex
+      description: >
+        Administrative operation protected by local operational controls in the
+        initial version. Full authentication is out of scope.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/IndexUpdateRequest"
+      responses:
+        "202":
+          description: Update run accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IndexUpdateRun"
+        "400":
+          description: Invalid update request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Administrative operation not allowed in this environment
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /index:
+    delete:
+      tags: [index]
+      summary: Delete the current index
+      operationId: deleteIndex
+      description: >
+        Administrative operation protected by local operational controls in the
+        initial version.
+      responses:
+        "202":
+          description: Delete accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminOperationAccepted"
+        "403":
+          description: Administrative operation not allowed in this environment
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /health:
+    get:
+      tags: [health]
+      summary: Check local dependency readiness
+      operationId: getHealth
+      responses:
+        "200":
+          description: Health summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+components:
+  schemas:
+    AreaInstitucional:
+      type: string
+      enum: [ACADEMICA, ADMINISTRATIVA, BIENESTAR, EXTENSION]
+    TipoFuente:
+      type: string
+      enum: [WEB, PDF, MANUAL]
+    EstadoIndexacion:
+      type: string
+      enum: [PENDIENTE, EN_PROCESO, COMPLETADO, FALLIDO]
+    QueryRequest:
+      type: object
+      additionalProperties: false
+      required: [question]
+      properties:
+        question:
+          type: string
+          minLength: 1
+          maxLength: 2000
+        area:
+          $ref: "#/components/schemas/AreaInstitucional"
+        max_results:
+          type: integer
+          minimum: 1
+          maximum: 10
+    QueryResponse:
+      type: object
+      additionalProperties: false
+      required: [answer, context_sufficient, sources]
+      properties:
+        answer:
+          type: string
+        context_sufficient:
+          type: boolean
+        sources:
+          type: array
+          items:
+            $ref: "#/components/schemas/CitedSource"
+        error:
+          $ref: "#/components/schemas/ErrorDetail"
+      examples:
+        insufficientContext:
+          answer: "No tengo informacion suficiente sobre este tema en las fuentes institucionales disponibles."
+          context_sufficient: false
+          sources: []
+    CitedSource:
+      type: object
+      additionalProperties: false
+      required: [url, area]
+      properties:
+        url:
+          type: string
+          format: uri
+        title:
+          type: string
+        area:
+          $ref: "#/components/schemas/AreaInstitucional"
+        regional:
+          type: string
+        department:
+          type: string
+    IndexStatus:
+      type: object
+      additionalProperties: false
+      required:
+        - ready
+        - document_count
+        - fragment_count
+        - covered_areas
+      properties:
+        ready:
+          type: boolean
+        document_count:
+          type: integer
+          minimum: 0
+        fragment_count:
+          type: integer
+          minimum: 0
+        last_successful_update_at:
+          type: string
+          format: date-time
+        covered_areas:
+          type: array
+          items:
+            $ref: "#/components/schemas/AreaInstitucional"
+        covered_regionales:
+          type: array
+          items:
+            type: string
+        recent_failures:
+          type: array
+          items:
+            $ref: "#/components/schemas/FailureSummary"
+    IndexUpdateRequest:
+      type: object
+      additionalProperties: false
+      required: [mode]
+      properties:
+        mode:
+          type: string
+          enum: [FULL_REBUILD, INCREMENTAL_SELECTED_SOURCES]
+        selected_source_ids:
+          type: array
+          items:
+            type: string
+          description: Required when mode is INCREMENTAL_SELECTED_SOURCES.
+    IndexUpdateRun:
+      type: object
+      additionalProperties: false
+      required:
+        - run_id
+        - mode
+        - status
+        - documents_indexed
+        - documents_failed
+        - fragments_indexed
+      properties:
+        run_id:
+          type: string
+        mode:
+          type: string
+          enum: [FULL_REBUILD, INCREMENTAL_SELECTED_SOURCES]
+        status:
+          $ref: "#/components/schemas/EstadoIndexacion"
+        started_at:
+          type: string
+          format: date-time
+        finished_at:
+          type: string
+          format: date-time
+        documents_indexed:
+          type: integer
+          minimum: 0
+        documents_failed:
+          type: integer
+          minimum: 0
+        fragments_indexed:
+          type: integer
+          minimum: 0
+        promoted:
+          type: boolean
+        failures:
+          type: array
+          items:
+            $ref: "#/components/schemas/FailureSummary"
+    AdminOperationAccepted:
+      type: object
+      additionalProperties: false
+      required: [accepted, message]
+      properties:
+        accepted:
+          type: boolean
+        message:
+          type: string
+    HealthResponse:
+      type: object
+      additionalProperties: false
+      required: [status, chromadb, ollama]
+      properties:
+        status:
+          type: string
+          enum: [ok, degraded, unavailable]
+        chromadb:
+          type: string
+          enum: [ok, unavailable]
+        ollama:
+          type: string
+          enum: [ok, unavailable]
+        index_ready:
+          type: boolean
+    FailureSummary:
+      type: object
+      additionalProperties: false
+      required: [source, reason]
+      properties:
+        source:
+          type: string
+        reason:
+          type: string
+        occurred_at:
+          type: string
+          format: date-time
+    ErrorResponse:
+      type: object
+      additionalProperties: false
+      required: [error]
+      properties:
+        error:
+          $ref: "#/components/schemas/ErrorDetail"
+    ErrorDetail:
+      type: object
+      additionalProperties: false
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          enum:
+            - INVALID_QUESTION
+            - INVALID_AREA
+            - INDEX_NOT_READY
+            - INDEX_EMPTY
+            - GENERATOR_UNAVAILABLE
+            - ADMIN_OPERATION_NOT_ALLOWED
+            - UPDATE_REQUEST_INVALID
+            - TIMEOUT
+        message:
+          type: string

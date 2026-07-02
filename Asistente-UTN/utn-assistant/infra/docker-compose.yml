@@ -1,0 +1,109 @@
+# UTN Assistant — Local Docker Compose stack
+#
+# Services:
+#   chromadb  — persistent vector store
+#   ollama    — local LLM inference (llama3)
+#   api       — FastAPI query/admin service
+#
+# The scraper and processor are NOT standalone workers here.
+# Indexing is triggered via the API:
+#   POST /index/rebuild   — full rebuild or incremental update
+#   DELETE /index         — clear the index
+#
+# Quick start:
+#   cd infra
+#   docker compose up -d chromadb ollama
+#   # Pull the model the first time (~4.7 GB, wait a few minutes):
+#   docker compose exec ollama ollama pull llama3
+#   docker compose up -d api
+#
+# Then trigger indexing:
+#   curl -X POST http://localhost:8000/index/rebuild \
+#        -H "Content-Type: application/json" \
+#        -d '{"mode": "FULL_REBUILD"}'
+
+services:
+
+  # --------------------------------------------------------------------------
+  # ChromaDB — persistent vector store
+  # --------------------------------------------------------------------------
+  chromadb:
+    image: chromadb/chroma:latest
+    restart: unless-stopped
+    ports:
+      - "8001:8000"
+    volumes:
+      - chromadb_data:/chroma/chroma
+    environment:
+      ANONYMIZED_TELEMETRY: "false"
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c '</dev/tcp/localhost/8000' 2>/dev/null && echo ok || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # --------------------------------------------------------------------------
+  # Ollama — local LLM inference
+  # --------------------------------------------------------------------------
+  ollama:
+    image: ollama/ollama:latest
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_models:/root/.ollama
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    # GPU (opcional — descomentar para NVIDIA):
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
+
+  # --------------------------------------------------------------------------
+  # API — FastAPI service
+  # --------------------------------------------------------------------------
+  api:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile.api
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    env_file:
+      - ../.env
+    environment:
+      # Override paths to point at container-internal locations
+      CHROMADB_PATH: /data/chromadb
+      # Ollama corre en el contenedor "ollama"
+      OLLAMA_BASE_URL: http://ollama:11434/v1
+      SOURCES_CONFIG_PATH: /app/config/sources.yaml
+    volumes:
+      - chromadb_data:/data/chromadb
+      - ./sources.yaml:/app/config/sources.yaml:ro
+    depends_on:
+      chromadb:
+        condition: service_healthy
+      ollama:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+
+volumes:
+  chromadb_data:
+    driver: local
+  ollama_models:
+    driver: local
