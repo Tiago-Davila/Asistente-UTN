@@ -2,10 +2,8 @@
 #
 # Services:
 #   chromadb  — persistent vector store
+#   ollama    — local LLM inference (llama3)
 #   api       — FastAPI query/admin service
-#
-# Ollama corre localmente (instalado en el host, no en Docker).
-# La API lo alcanza via host.docker.internal:11434.
 #
 # The scraper and processor are NOT standalone workers here.
 # Indexing is triggered via the API:
@@ -14,7 +12,9 @@
 #
 # Quick start:
 #   cd infra
-#   docker compose up -d chromadb
+#   docker compose up -d chromadb ollama
+#   # Pull the model the first time (~4.7 GB, wait a few minutes):
+#   docker compose exec ollama ollama pull llama3
 #   docker compose up -d api
 #
 # Then trigger indexing:
@@ -44,6 +44,31 @@ services:
       start_period: 10s
 
   # --------------------------------------------------------------------------
+  # Ollama — local LLM inference
+  # --------------------------------------------------------------------------
+  ollama:
+    image: ollama/ollama:latest
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_models:/root/.ollama
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    # GPU (opcional — descomentar para NVIDIA):
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
+
+  # --------------------------------------------------------------------------
   # API — FastAPI service
   # --------------------------------------------------------------------------
   api:
@@ -58,14 +83,16 @@ services:
     environment:
       # Override paths to point at container-internal locations
       CHROMADB_PATH: /data/chromadb
-      # Ollama corre en el host, no en Docker
-      OLLAMA_BASE_URL: http://host.docker.internal:11434/v1
+      # Ollama corre en el contenedor "ollama"
+      OLLAMA_BASE_URL: http://ollama:11434/v1
       SOURCES_CONFIG_PATH: /app/config/sources.yaml
     volumes:
       - chromadb_data:/data/chromadb
       - ./sources.yaml:/app/config/sources.yaml:ro
     depends_on:
       chromadb:
+        condition: service_healthy
+      ollama:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
@@ -77,4 +104,6 @@ services:
 
 volumes:
   chromadb_data:
+    driver: local
+  ollama_models:
     driver: local
