@@ -20,13 +20,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libffi-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy only the dependency manifest first (better layer cache)
-COPY pyproject.toml ./
+# Copy requirements file first (better layer cache)
+COPY requirements.txt ./
 
-# Install all runtime dependencies into a target directory
+# Install torch CPU-only first to avoid pulling CUDA (~2.5 GB) unnecessarily
 RUN pip install --upgrade pip && \
-    pip install --no-cache-dir --prefix=/install ".[dev]" || \
-    pip install --no-cache-dir --prefix=/install .
+    pip install --no-cache-dir --prefix=/install \
+        torch --index-url https://download.pytorch.org/whl/cpu && \
+    pip install --no-cache-dir --prefix=/install -r requirements.txt
 
 # ---------------------------------------------------------------------------
 # Stage 2: Playwright browser installer
