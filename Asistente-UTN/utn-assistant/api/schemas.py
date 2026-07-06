@@ -128,3 +128,20 @@ class HealthResponse(BaseModel):
     chromadb: str  # ok | unavailable
     ollama: str  # ok | unavailable
     index_ready: bool = False
+
+
+class StreamChunk(BaseModel):
+    """One event in a POST /query/stream SSE response.
+
+    Two shapes are emitted:
+
+    - Text chunk during generation: ``{"chunk": "..."}``
+    - Final completion event: ``{"done": true, "context_sufficient": bool,
+      "sources": [...], "error": null | {...}}``
+    """
+
+    chunk: Optional[str] = None
+    done: Optional[bool] = None
+    context_sufficient: Optional[bool] = None
+    sources: Optional[list[CitedSourceResponse]] = None
+    error: Optional[ErrorDetail] = None

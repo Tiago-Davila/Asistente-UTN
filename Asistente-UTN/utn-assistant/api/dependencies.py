@@ -55,6 +55,7 @@ def _get_llm_client(settings: Settings) -> OllamaClient:
         base_url=settings.ollama_base_url,
         model=settings.llm_model,
         timeout_seconds=settings.generation_timeout_seconds,
+        max_tokens=settings.max_tokens_generation,
     )
 
 

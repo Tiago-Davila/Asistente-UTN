@@ -1,5 +1,5 @@
 """
-api/routers/query.py — POST /query endpoint.
+api/routers/query.py — POST /query and POST /query/stream endpoints.
 
 Delegates entirely to ResponderConsultaService — no business logic here.
 Validates the request body and maps domain results to API schemas.
@@ -8,11 +8,12 @@ Traceability: T060, US1, US2, US3, tasks.md §Notes (keep routers thin).
 """
 from __future__ import annotations
 
+import json
 import logging
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import ValidationError
 
 from api.dependencies import get_responder_service
@@ -98,4 +99,50 @@ def query_assistant(
         answer=answer.answer,
         context_sufficient=answer.context_sufficient,
         sources=sources,
+    )
+
+
+@router.post(
+    "/query/stream",
+    responses={
+        400: {"description": "Invalid question or filter"},
+        503: {"description": "Index or generation dependency unavailable"},
+    },
+    summary="Answer an institutional question with token streaming",
+    operation_id="queryAssistantStream",
+)
+def query_assistant_stream(
+    request: QueryRequest,
+    service: Annotated[ResponderConsultaService, Depends(get_responder_service)],
+) -> StreamingResponse:
+    """Like POST /query but streams the answer as Server-Sent Events (SSE).
+
+    Each event is a JSON object on a ``data:`` line:
+
+    - ``data: {"chunk": "..."}`` — a successive text chunk during generation.
+    - ``data: {"done": true, "context_sufficient": bool, "sources": [...], "error": null}``
+      — final event signalling completion with source metadata.
+
+    Clients should read the stream until the ``done`` event is received.
+    """
+    try:
+        domain_query = UserQuery(
+            question=request.question,
+            area_filter=request.area,
+            max_results=request.max_results,
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    def event_generator():
+        for event in service.stream_answer(domain_query):
+            yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",  # disable Nginx buffering if proxied
+        },
     )
