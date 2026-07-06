@@ -137,6 +137,19 @@ class Settings(BaseSettings):
     )
 
     # ------------------------------------------------------------------
+    # Generation limits — controls response length and latency
+    # ------------------------------------------------------------------
+    max_tokens_generation: int = Field(
+        default=512,
+        ge=64,
+        le=4096,
+        description=(
+            "Maximum tokens the LLM may generate per response. "
+            "Lower values reduce latency; higher values allow longer answers."
+        ),
+    )
+
+    # ------------------------------------------------------------------
     # API server
     # ------------------------------------------------------------------
     api_host: str = Field(default="0.0.0.0")
