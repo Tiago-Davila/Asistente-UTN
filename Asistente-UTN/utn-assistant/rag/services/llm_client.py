@@ -2,15 +2,16 @@
 rag/services/llm_client.py — Ollama-compatible OpenAI client adapter.
 
 Wraps the httpx-based chat completion call to the local Ollama endpoint.
-Configuration (URL, model, timeout) comes from settings (FR-022).
+Configuration (URL, model, timeout, max_tokens) comes from settings (FR-022).
 
 research.md §Timeout Strategy: 30-second hard generation timeout with
 a controlled error on breach (no internal details exposed to users).
 """
 from __future__ import annotations
 
+import json
 import logging
-from typing import Optional
+from typing import Iterator, Optional
 
 import httpx
 
@@ -32,6 +33,9 @@ class OllamaClient:
         Model name to use for generation, e.g. ``llama3``.
     timeout_seconds:
         Hard timeout for the generation request.
+    max_tokens:
+        Maximum number of tokens to generate. Limits response length and
+        reduces latency. ``None`` defers to the model's default.
     """
 
     def __init__(
@@ -39,10 +43,12 @@ class OllamaClient:
         base_url: str = "http://localhost:11434/v1",
         model: str = "llama3",
         timeout_seconds: float = 30.0,
+        max_tokens: Optional[int] = 512,
     ) -> None:
         self._base_url = base_url.rstrip("/")
         self._model = model
         self._timeout = timeout_seconds
+        self._max_tokens = max_tokens
 
     def generate(self, prompt: str) -> str:
         """Send a generation request and return the assistant's reply text.
@@ -59,6 +65,9 @@ class OllamaClient:
             "messages": [{"role": "user", "content": prompt}],
             "stream": False,
         }
+        if self._max_tokens is not None:
+            payload["max_tokens"] = self._max_tokens
+
         try:
             with httpx.Client(timeout=self._timeout) as client:
                 response = client.post(
@@ -83,6 +92,70 @@ class OllamaClient:
         except (KeyError, IndexError, ValueError) as exc:
             logger.warning("Could not parse LLM response: %s — raw: %s", exc, response.text[:200])
             raise LLMGenerationError("Respuesta del generador en formato inesperado.") from exc
+
+    def stream(self, prompt: str) -> Iterator[str]:
+        """Stream generation tokens as an iterator of text chunks.
+
+        Uses Ollama's SSE streaming (``stream: true``) so the caller receives
+        tokens progressively instead of waiting for the full response.
+
+        Yields
+        ------
+        str
+            Successive text chunks as they arrive from the model.
+
+        Raises
+        ------
+        LLMGenerationError
+            On timeout, connection failure, or unexpected response format.
+        """
+        payload = {
+            "model": self._model,
+            "messages": [{"role": "user", "content": prompt}],
+            "stream": True,
+        }
+        if self._max_tokens is not None:
+            payload["max_tokens"] = self._max_tokens
+
+        try:
+            with httpx.stream(
+                "POST",
+                f"{self._base_url}/chat/completions",
+                json=payload,
+                timeout=self._timeout,
+            ) as response:
+                if response.status_code != 200:
+                    response.read()  # consume body before raising
+                    logger.warning("LLM streaming returned HTTP %d", response.status_code)
+                    raise LLMGenerationError(
+                        "El generador de respuestas devolvió un error inesperado."
+                    )
+
+                for line in response.iter_lines():
+                    if not line:
+                        continue
+                    if not line.startswith("data: "):
+                        continue
+                    data_str = line[6:]
+                    if data_str.strip() == "[DONE]":
+                        break
+                    try:
+                        data = json.loads(data_str)
+                        chunk: str = data["choices"][0]["delta"].get("content", "")
+                        if chunk:
+                            yield chunk
+                    except (KeyError, IndexError, ValueError) as exc:
+                        logger.debug("Could not parse streaming chunk: %s — raw: %s", exc, data_str[:100])
+                        continue
+
+        except LLMGenerationError:
+            raise
+        except httpx.TimeoutException as exc:
+            logger.warning("LLM streaming timed out after %ss: %s", self._timeout, exc)
+            raise LLMGenerationError("El generador de respuestas superó el tiempo máximo.") from exc
+        except httpx.RequestError as exc:
+            logger.warning("LLM streaming request failed: %s", exc)
+            raise LLMGenerationError("El generador de respuestas no está disponible.") from exc
 
     def is_available(self) -> bool:
         """Return True when the Ollama server responds to a health ping."""
