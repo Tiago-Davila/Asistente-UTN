@@ -6,6 +6,7 @@ No infrastructure imports (ChromaDB, httpx, FastAPI, etc.) belong here.
 
 Traceability:
   is_context_sufficient  → FR-006, data-model.md §SearchResultSet
+  has_citable_source     → FR-005 (rev. 2026-07-10), data-model.md §SearchResultSet
   REFUSAL_TEXT           → FR-007
   make_refusal_answer    → FR-007
   validate_citation_integrity → FR-005, FR-008, data-model.md §CitedSource
@@ -44,6 +45,21 @@ def is_context_sufficient(result_set: "SearchResultSet") -> bool:
     if not result_set.results:
         return False
     return any(r.score >= result_set.threshold for r in result_set.results)
+
+
+# ---------------------------------------------------------------------------
+# Citable source presence (FR-005, revised 2026-07-10)
+# ---------------------------------------------------------------------------
+
+def has_citable_source(result_set: "SearchResultSet") -> bool:
+    """Return True when at least one retrieved fragment carries a source URL.
+
+    FR-005 (revised 2026-07-10): if retrieved context clears the relevance
+    threshold but no retrieved fragment carries a source URL, the system
+    must not produce an uncited answer. Callers must treat this as
+    insufficient context and fall back to the approved refusal instead.
+    """
+    return bool(result_set.urls())
 
 
 # ---------------------------------------------------------------------------
