@@ -171,6 +171,11 @@
 - [X] T104 Create validation report template in `utn-assistant/tests/e2e/validation_report.md` mapping quickstart outcomes to SC-001 through SC-008 (depends on T096, T097, T098, T099, T100, T101, T102, T103)
 - [ ] T105 BLOCKED: After frontend spec amendment and implementation, create frontend E2E validation tasks in `utn-assistant/frontend/tests/e2e/quickstart.spec.ts` for query, area filter, status, loading, error, and source display flows (depends on T093, T094)
 
+## Phase 11: Ajustes por revisión de alcance y citación (2026-07-10)
+
+- [X] T106 Configurar `utn-assistant/config/sources.yaml` con únicamente fuentes UTN-FRBA Ing. en Sistemas (regional=FRBA); ninguna otra regional (FR-028) (depends on T006)
+- [X] T107 Extraer del documento "Contexto Chatbot" las URLs oficiales de FRBA-Sistemas y cargarlas como fuentes WEB en `sources.yaml` con metadata area/regional (FR-011, FR-013) (depends on T106)
+
 ## Dependencies & Execution Order
 
 ### Phase Dependencies
