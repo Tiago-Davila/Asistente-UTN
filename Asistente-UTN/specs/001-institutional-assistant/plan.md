@@ -44,15 +44,19 @@ RAG queries; public UTN HTML only; robots.txt compliance; configured request
 delays; no end-user login in initial version; administrator actions protected
 by controlled local environment or manual operator execution
 
-**Scale/Scope**: One installation may cover rectorado and one or more configured
-regionales/departments; initial source type WEB only; areas ACADEMICA,
-ADMINISTRATIVA, BIENESTAR, EXTENSION
+**Scale/Scope**: The architecture supports an installation covering rectorado
+and one or more configured regionales/departments via source configuration
+(FR-027). The current version, however, is configured for a single scope:
+UTN-FRBA, Ingenieria en Sistemas de Informacion (FR-028); no other regional or
+department sources are configured. Initial source type WEB only; areas
+ACADEMICA, ADMINISTRATIVA, BIENESTAR, EXTENSION remain supported as configured
+areas, with the current FRBA-Sistemas corpus using the applicable subset.
 
 ## Constitution Check
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-- **Traceability**: PASS. Planned components map to FR-001 through FR-027 and
+- **Traceability**: PASS. Planned components map to FR-001 through FR-028 and
   user stories US1-US7. Frontend from the meta context is excluded because the
   spec lists graphical web interface out of scope.
 - **Layer separation**: PASS. Planned layout keeps scraper, processor,
@@ -68,9 +72,16 @@ ADMINISTRATIVA, BIENESTAR, EXTENSION
   semantic relevance ordering, prompt context inclusion, scraper failures and
   empty pages, index preservation, citation integrity, and threshold refusal.
 - **Search scalability**: PASS. Runtime semantic search uses ChromaDB with
-  metadata filtering; no full-document in-memory scans for query serving.
+  metadata filtering; no full-document in-memory scans for query serving. The
+  single-scope FRBA restriction (FR-028) does not narrow this guarantee: it is
+  a configured corpus boundary, not an architectural one. Principle VIII 1.0.1
+  separates the multi-regional design capacity (still required) from the
+  currently indexed scope, so FR-028 and FR-027 do not conflict.
 - **Answer integrity**: PASS. Responses use Argentinian Spanish, cite URL and
-  title when available, and refuse insufficient context with the approved text.
+  title when available, and refuse insufficient context with the approved
+  text. If retrieved context exceeds the relevance threshold but no retrieved
+  fragment carries a source URL, the system returns the insufficient-context
+  refusal instead of an uncited answer (FR-005, revised 2026-07-10).
 - **SDD phase discipline**: PASS. This phase creates Markdown/YAML design
   artifacts only; implementation waits for validated `tasks.md`.
 
@@ -140,7 +151,10 @@ Detailed design artifacts:
 ## Post-Design Constitution Check
 
 - **Traceability**: PASS. Data model entities and API contract map to FRs and
-  US1-US7. No frontend contract is generated.
+  US1-US7, including FR-027/FR-028: `regional`/`covered_regionales` fields
+  remain part of the data model and contract (architecture capacity), while
+  the currently configured sources are FRBA-Sistemas only (current scope). No
+  frontend contract is generated.
 - **Layer separation**: PASS. Contracts expose API surface only; data model
   keeps domain concepts independent from infrastructure details.
 - **Configuration**: PASS. Research and data model identify configuration-owned
@@ -150,10 +164,16 @@ Detailed design artifacts:
 - **Local-only stack**: PASS. Contracts do not introduce external paid services.
 - **Business-rule tests**: PASS. Quickstart and future tasks must validate
   refusal, citation, update preservation, scraper failures, and status.
-- **Search scalability**: PASS. Research chooses ChromaDB metadata filtering and
-  top_k limits.
-- **Answer integrity**: PASS. Contract returns source URL/title and
-  `context_sufficient`.
+- **Search scalability**: PASS. Research chooses ChromaDB metadata filtering
+  and top_k limits. The FRBA-only current scope (FR-028) is a source
+  configuration choice, not a schema or architecture restriction; regional
+  metadata fields stay generic per Principle VIII 1.0.1, so enabling
+  additional regionales later requires configuration only.
+- **Answer integrity**: PASS. `AssistantAnswer`/`SearchResultSet` validation
+  rules (data-model.md) require `context_sufficient = false` whenever no
+  result carries a source URL, and the contract's `context_sufficient` /
+  `sources` fields enforce the same rule at the API boundary (FR-005, revised
+  2026-07-10; SC-002).
 - **SDD phase discipline**: PASS. Only documentation artifacts were produced.
 
 ## Complexity Tracking
