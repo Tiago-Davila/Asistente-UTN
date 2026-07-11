@@ -177,7 +177,7 @@
 - [X] T107 Extraer del documento "Contexto Chatbot" las URLs oficiales de FRBA-Sistemas y cargarlas como fuentes WEB en `sources.yaml` con metadata area/regional (FR-011, FR-013) (depends on T106)
 - [X] T108 [US3] Ajustar ResponderConsultaService en `utn-assistant/rag/services/responder_consulta.py`: si el contexto supera el umbral pero ningún fragmento recuperado tiene URL, devolver la respuesta de contexto insuficiente en lugar de una respuesta sin fuente (FR-005 rev.) (depends on T047, T049)
 - [X] T109 [P] [US3] Test en `utn-assistant/tests/unit/rag/domain/test_citation_rules.py`: contexto suficiente sin ninguna URL en fragmentos → refusal; con al menos una URL → respuesta con fuente (FR-005 rev.) (depends on T108, T013)
-- [X] T110 [P] [US2] Actualizar `utn-assistant/tests/integration/rag/test_query_refusal.py`: agregar caso "contexto relevante pero sin URL citable" → mensaje de refusal (depends on T108, T071)
+- [X] T110 [P] [US2] Actualizar `utn-assistant/tests/integration/rag/test_query_refusal.py`: agregar caso contexto relevante pero sin URL citable → mensaje de refusal (depends on T108, T071)
 - [X] T111 Actualizar `utn-assistant/tests/README.md` y `utn-assistant/tests/e2e/validation_report.md` mapeando FR-005 rev., FR-028, SC-002 rev. y SC-009 (depends on T108)
 
 ## Dependencies & Execution Order
