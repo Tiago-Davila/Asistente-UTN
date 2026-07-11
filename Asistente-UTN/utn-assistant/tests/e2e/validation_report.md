@@ -8,7 +8,12 @@
 **Embedding model**: paraphrase-multilingual-mpnet-base-v2  
 **LLM model**: _fill in (e.g., llama3)_  
 
-**Traceability**: T104, quickstart.md Scenarios 1–7, SC-001 through SC-008.
+**Traceability**: T104, T111, quickstart.md Scenarios 1–7, SC-001 through SC-009.
+
+**2026-07-10 revision**: SC-002 now requires that retrieved content without
+any source URL yields the refusal message rather than an uncited answer
+(FR-005 rev.). SC-009 is new and validates that the configured corpus is
+scoped to UTN-FRBA, Ingenieria en Sistemas only (FR-027/FR-028).
 
 ---
 
@@ -54,7 +59,9 @@ Mark each success criterion PASS or FAIL with brief evidence.
 | `GET /index/status` after update | `ready: true`, counts > 0 | | |
 | `covered_areas` populated | at least one area | | |
 | `last_successful_update_at` set | ISO datetime present | | |
+| All configured sources are UTN-FRBA, Ingenieria en Sistemas (FR-028) | no other regional present in `config/sources.yaml` | | |
 
+**SC-009**: 100% of configured sources belong to UTN-FRBA, Ingenieria en Sistemas: PASS / FAIL  
 **Outcome**: PASS / FAIL  
 **Notes**: _fill in_
 
@@ -75,7 +82,9 @@ Mark each success criterion PASS or FAIL with brief evidence.
 | Answer is in Argentinian Spanish | natural language, no raw HTML | | |
 | Response within 5 seconds (SC-004) | elapsed < 5s | | |
 
-**SC-002**: 100% of answers include at least one source URL: PASS / FAIL  
+**SC-002**: 100% of answers include at least one source URL, and retrieved
+content without any source URL yields the refusal message instead of an
+uncited answer (FR-005 rev.): PASS / FAIL  
 **SC-004**: Response within 5 seconds for ≥95% of normal queries: PASS / FAIL  
 **Outcome**: PASS / FAIL  
 **Notes**: _fill in_
@@ -85,7 +94,7 @@ Mark each success criterion PASS or FAIL with brief evidence.
 ## Scenario 4: Insufficient Context Refusal
 
 **quickstart.md**: Scenario 4  
-**Tasks**: T099
+**Tasks**: T099, T110
 
 | Check | Expected | Result | Status |
 |-------|----------|--------|--------|
@@ -94,6 +103,7 @@ Mark each success criterion PASS or FAIL with brief evidence.
 | Answer is exact refusal text | "No tengo informacion suficiente..." | | |
 | `sources` is empty | [] | | |
 | No error field in refusal | error: null or absent | | |
+| Relevant context but no fragment has a source URL → refusal (FR-005 rev.) | exact refusal text, `sources: []` | | |
 
 **SC-003**: 100% of insufficient-context questions return approved refusal: PASS / FAIL  
 **Outcome**: PASS / FAIL  
@@ -170,6 +180,7 @@ Mark each success criterion PASS or FAIL with brief evidence.
 | SC-006 | Failed update never replaces usable index | 0 failures | | |
 | SC-007 | Corpus supports ≥ 50,000 fragments with expected experience | ≥50k | | |
 | SC-008 | ≥ 90% of pilot users can identify source link without assistance | 90% | | |
+| SC-009 | 100% of configured sources belong to UTN-FRBA, Ingenieria en Sistemas; no other regional indexed | 100% | | |
 
 ---
 
