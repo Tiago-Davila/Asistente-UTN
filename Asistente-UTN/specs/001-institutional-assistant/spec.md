@@ -18,6 +18,11 @@
 - Q: Que debe significar actualizacion incremental en la version inicial? -> A: Incremental re-procesa solo fuentes seleccionadas por el administrador.
 - Q: Que alcance regional debe tener una instalacion del asistente? -> A: Cada instalacion puede cubrir rectorado y regionales configuradas.
 
+### Session 2026-07-10
+
+- Q: La instalacion vigente, debe cubrir multiples regionales o solo FRBA? -> A: Solo UTN-FRBA, Ingenieria en Sistemas de Informacion. Supersede la decision del 2026-06-30 sobre alcance regional para esta version. La capacidad multi-regional (FR-027) permanece como capacidad de arquitectura, no como alcance vigente.
+- Q: Que ocurre si un fragmento recuperado no tiene URL de fuente? -> A: Si al menos un fragmento recuperado tiene URL, la respuesta la incluye. Si ningun fragmento tiene URL, se aplica el comportamiento de contexto insuficiente en lugar de responder sin fuente.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Consulta institucional general (Priority: P1)
@@ -179,7 +184,7 @@ recientes sin abrir almacenamiento interno.
 - **FR-002**: System MUST validate that each question is non-empty and does not exceed a configurable maximum length, assumed initially as 2000 characters.
 - **FR-003**: System MUST retrieve relevant institutional content before generating an answer.
 - **FR-004**: System MUST answer in natural Argentinian Spanish.
-- **FR-005**: System MUST include at least one institutional source URL for every answer based on retrieved content and MUST include the page title when available.
+- **FR-005**: System MUST include at least one institutional source URL for every answer based on retrieved content, and MUST include the page title when available. If no retrieved fragment carries a source URL, the system MUST NOT answer and MUST return the insufficient-context behavior (FR-006/FR-007) instead of producing an answer without a citable source. [Revisado 2026-07-10]
 - **FR-006**: System MUST refuse to answer when retrieved context is insufficient or below the configured global relevance threshold.
 - **FR-007**: System MUST use the refusal text "No tengo informacion suficiente sobre este tema en las fuentes institucionales disponibles." when it cannot answer from available sources.
 - **FR-008**: System MUST avoid generating claims that are not supported by retrieved institutional context.
@@ -201,14 +206,15 @@ recientes sin abrir almacenamiento interno.
 - **FR-024**: Each implemented component MUST trace to a user story, functional requirement, or documented decision in this specification.
 - **FR-025**: System MUST allow local query access without end-user login in the initial version.
 - **FR-026**: System MUST restrict administrator-only actions to protected operational access, such as a controlled local environment or manual operator execution, until a later authentication feature is specified.
-- **FR-027**: System MUST allow each installation to cover rectorado and one or more configured regionales or departments.
+- **FR-027**: The architecture MUST support an installation covering rectorado and one or more configured regionales or departments via source configuration. The current version, however, MUST configure a single regional scope: UTN-FRBA, Ingenieria en Sistemas de Informacion. Enabling additional regionales requires only source configuration, not code changes. [Acotado 2026-07-10; supersede alcance de la clarificacion 2026-06-30]
+- **FR-028**: The current version MUST restrict the indexed corpus to UTN-FRBA, Ingenieria en Sistemas de Informacion sources. Content from other regionales or departments MUST NOT be part of the configured sources in this version. [2026-07-10]
 
 ### Institutional Source Requirements *(include for RAG/content features)*
 
 - **Source Types**: WEB for the initial version.
-- **Institutional Areas**: ACADEMICA, ADMINISTRATIVA, BIENESTAR, and EXTENSION are supported as configured areas for this feature.
+- **Institutional Areas**: ACADEMICA, ADMINISTRATIVA, BIENESTAR, and EXTENSION remain supported as configured areas. The current FRBA-Sistemas corpus uses the subset applicable to the department.
 - **Required Source Metadata**: URL, extraction date, source type, institutional area, regional or department when available, and page title when available.
-- **User-Visible Source Display**: Answers show source URL and page title when available; exact quoted fragments are not required in the initial version.
+- **User-Visible Source Display**: Answers show source URL and page title when available. An answer derived from retrieved content without any source URL is not permitted; such cases fall back to insufficient-context behavior (see FR-005, revised 2026-07-10).
 - **Freshness Expectations**: Administrators can refresh sources on demand; users can see or administrators can verify the last successful update date.
 - **Insufficient Context Behavior**: System MUST say "No tengo informacion suficiente sobre este tema en las fuentes institucionales disponibles." when context is not enough.
 - **Relevance Threshold Policy**: A single global relevance threshold is configurable for the initial version, and its initial value is defined during planning.
@@ -228,13 +234,14 @@ recientes sin abrir almacenamiento interno.
 ### Measurable Outcomes
 
 - **SC-001**: At least 90% of representative institutional FAQ questions with available source content receive a relevant answer with a cited source during acceptance testing.
-- **SC-002**: 100% of answers generated from retrieved content include at least one institutional source URL and include the page title when available.
+- **SC-002**: 100% of answers generated from retrieved content include at least one institutional source URL and include the page title when available; retrieved content without any source URL yields the refusal message, never an uncited answer. [Revisado 2026-07-10]
 - **SC-003**: 100% of out-of-scope or insufficient-context questions return the approved refusal message instead of an unsupported answer.
 - **SC-004**: Users receive a response or controlled error within 5 seconds for at least 95% of normal queries when local services and the index are ready.
 - **SC-005**: Administrators can complete a source update without code changes and receive counts of indexed and failed items at the end of every run.
 - **SC-006**: A failed update never replaces the last known usable index in acceptance testing.
 - **SC-007**: The searchable corpus supports at least 50,000 fragments while preserving expected query experience in normal local conditions.
 - **SC-008**: At least 90% of pilot users can identify the source link used for an answer without assistance.
+- **SC-009**: 100% of configured sources in the current version belong to UTN-FRBA, Ingenieria en Sistemas; acceptance testing finds no indexed content from other regionales. [2026-07-10]
 
 ## Assumptions
 
@@ -244,7 +251,7 @@ recientes sin abrir almacenamiento interno.
 - Source display includes URL and page title when available; exact quoted snippets are not required in the initial version.
 - Institutional area filters are optional for users and configurable by administrators.
 - Incremental updates re-process only administrator-selected configured sources in the initial version; automatic change detection is out of scope unless specified later.
-- Each installation may cover rectorado plus one or more configured regionales or departments; multi-regional coverage is driven by configured sources.
+- The architecture supports rectorado plus multiple configured regionales or departments, but the current version is scoped to a single regional (UTN-FRBA, Ingenieria en Sistemas). Multi-regional coverage remains available through configured sources in later versions. [Acotado 2026-07-10]
 - Source inclusion and exclusion lists are administrator-configured, with ephemeral news and past events excluded unless explicitly included.
 
 ## Out of Scope
@@ -259,3 +266,4 @@ recientes sin abrir almacenamiento interno.
 - PDF source ingestion in the initial version.
 - Paid external services for core query, indexing, storage, or generation behavior.
 - Automatic detection of modified pages for incremental updates.
+- Indexing regionales or departments other than UTN-FRBA Ingenieria en Sistemas in the current version.
