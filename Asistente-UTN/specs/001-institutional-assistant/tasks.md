@@ -175,6 +175,7 @@
 
 - [X] T106 Configurar `utn-assistant/config/sources.yaml` con únicamente fuentes UTN-FRBA Ing. en Sistemas (regional=FRBA); ninguna otra regional (FR-028) (depends on T006)
 - [X] T107 Extraer del documento "Contexto Chatbot" las URLs oficiales de FRBA-Sistemas y cargarlas como fuentes WEB en `sources.yaml` con metadata area/regional (FR-011, FR-013) (depends on T106)
+- [X] T108 [US3] Ajustar ResponderConsultaService en `utn-assistant/rag/services/responder_consulta.py`: si el contexto supera el umbral pero ningún fragmento recuperado tiene URL, devolver la respuesta de contexto insuficiente en lugar de una respuesta sin fuente (FR-005 rev.) (depends on T047, T049)
 
 ## Dependencies & Execution Order
 

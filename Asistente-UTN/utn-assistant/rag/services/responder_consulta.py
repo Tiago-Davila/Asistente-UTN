@@ -7,12 +7,15 @@ Flow:
   1. Embed the question.
   2. Retrieve top-k fragments from the vector store.
   3. Order by descending relevance (domain rules).
-  4. Check context sufficiency against the global threshold.
-  5a. Insufficient context → return approved refusal answer (FR-007).
-  5b. Sufficient context → build prompt → generate → assemble answer with
-      cited sources (FR-005).
+  4. Check context sufficiency against the global threshold AND require at
+     least one retrieved fragment with a citable URL (FR-005, rev.
+     2026-07-10).
+  5a. Insufficient context, or no citable URL → return approved refusal
+      answer (FR-007).
+  5b. Sufficient context with a citable URL → build prompt → generate →
+      assemble answer with cited sources (FR-005).
 
-Traceability: T047 (US1), T048 (US2), T049 (US3).
+Traceability: T047 (US1), T048 (US2), T049 (US3), T108 (FR-005 rev.).
 """
 from __future__ import annotations
 
@@ -25,6 +28,7 @@ from rag.domain.queries import AssistantAnswer, UserQuery
 from rag.domain.rules import (
     REFUSAL_TEXT,
     build_cited_sources,
+    has_citable_source,
     is_context_sufficient,
     make_refusal_answer,
     order_results,
@@ -102,7 +106,11 @@ class ResponderConsultaService:
             threshold=self._threshold,
             area_filter=query.area_filter,
         )
-        result_set.context_sufficient = is_context_sufficient(result_set)
+        # FR-005 (rev. 2026-07-10): threshold-sufficient context with no
+        # citable URL among the retrieved fragments is still insufficient.
+        result_set.context_sufficient = is_context_sufficient(
+            result_set
+        ) and has_citable_source(result_set)
 
         if not result_set.context_sufficient:
             logger.debug("Insufficient context for query: returning refusal.")
@@ -172,7 +180,11 @@ class ResponderConsultaService:
             threshold=self._threshold,
             area_filter=query.area_filter,
         )
-        result_set.context_sufficient = is_context_sufficient(result_set)
+        # FR-005 (rev. 2026-07-10): threshold-sufficient context with no
+        # citable URL among the retrieved fragments is still insufficient.
+        result_set.context_sufficient = is_context_sufficient(
+            result_set
+        ) and has_citable_source(result_set)
 
         if not result_set.context_sufficient:
             logger.debug("Insufficient context for query: streaming refusal.")
