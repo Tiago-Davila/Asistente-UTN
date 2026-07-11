@@ -1,31 +1,13 @@
 <!--
 Sync Impact Report
-Version change: template -> 1.0.0
+Version change: 1.0.0 -> 1.0.1
 Modified principles:
-- Template placeholders -> I. La especificacion manda sobre la implementacion
-- Template placeholders -> II. Dominio modelado con claridad conceptual
-- Template placeholders -> III. Responsabilidades separadas por capas
-- Template placeholders -> IV. Python sin anti-patrones institucionales
-- Template placeholders -> V. Tipos y constantes para valores cerrados
-- Template placeholders -> VI. Patrones de diseño solo si simplifican
-- Template placeholders -> VII. Reglas de negocio testeadas
-- Template placeholders -> VIII. Escalabilidad sin degradar busqueda
-- Template placeholders -> IX. Respuestas claras, fundadas y honestas
-- Template placeholders -> X. Fases SDD sin codigo
-Added sections:
-- Stack Tecnologico No Negociable
-- Restricciones de Arquitectura
-- Flujo de Trabajo y Control de Versiones
-Removed sections:
-- Placeholder SECTION_2_NAME
-- Placeholder SECTION_3_NAME
+- VIII. Escalabilidad sin degradar busqueda -> aclara alcance vigente (FRBA) vs capacidad multi-regional
+Added sections: none
+Removed sections: none
 Templates requiring updates:
-- .specify/templates/plan-template.md - updated
-- .specify/templates/spec-template.md - updated
-- .specify/templates/tasks-template.md - updated
-- .specify/templates/checklist-template.md - updated
-- .specify/templates/commands/*.md - not present
-Follow-up TODOs: none
+- .specify/templates/spec-template.md - revisar seccion de alcance
+Follow-up TODOs: definir alcance FRBA en spec.md; hacer URL de fuente obligatoria en RF de respuesta
 -->
 # Asistente Inteligente Institucional UTN Constitution
 
@@ -127,6 +109,12 @@ busqueda semantica MUST operar siempre sobre ChromaDB persistente u otra base
 vectorial aprobada por una enmienda constitucional. Las listas en memoria MAY
 usarse solo en tests unitarios, fixtures o transformaciones previas a la carga.
 
+El alcance del corpus vigente MUST definirse en la especificacion. La capacidad
+multi-regional descrita aqui es un requisito de disenio (el sistema no debe
+degradarse al crecer), no una obligacion de indexar todas las regionales en la
+version actual. La version actual indexa unicamente UTN-FRBA, Ingenieria en
+Sistemas de Informacion, segun `spec.md`.
+
 Rationale: el valor del asistente depende de mantener calidad y latencia de
 busqueda a medida que crece el corpus institucional.
 
@@ -221,4 +209,4 @@ despues del diseno. Las violaciones MUST documentarse en `plan.md` con
 justificacion y alternativa mas simple rechazada; si contradicen un MUST, la
 feature no puede avanzar sin enmienda constitucional.
 
-**Version**: 1.0.0 | **Ratified**: 2026-06-30 | **Last Amended**: 2026-06-30
+**Version**: 1.0.1 | **Ratified**: 2026-06-30 | **Last Amended**: 2026-07-10
