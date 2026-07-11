@@ -1,10 +1,14 @@
 """
 T013 — Failing unit tests for citation integrity rules.
+T109 — Unit tests for citable-source presence (FR-005, rev. 2026-07-10).
 
 These tests define the behaviour that rag/domain/rules.py must satisfy.
 They are expected to FAIL until T016 + T018 + T019 + T021 are implemented.
 
 FR-005: every answer based on retrieved content must include at least one URL.
+FR-005 (rev. 2026-07-10): context that clears the relevance threshold but
+carries no citable URL among retrieved fragments must fall back to the
+insufficient-context refusal instead of an uncited answer.
 FR-008: cited sources must correspond to retrieved fragments only.
 data-model.md §CitedSource: url required; title when available.
 data-model.md §AssistantAnswer: sources must originate from retrieved context.
@@ -22,6 +26,11 @@ def _import_rules():
 def _import_search_result():
     from rag.domain.fragments import SearchResult
     return SearchResult
+
+
+def _import_search_result_set():
+    from rag.domain.fragments import SearchResultSet
+    return SearchResultSet
 
 
 def _import_cited_source():
@@ -110,3 +119,78 @@ class TestCitedSourceTitle:
         assert any(s.url == "https://utn.edu.ar/a" for s in cited)
         source = next(s for s in cited if s.url == "https://utn.edu.ar/a")
         assert source.title is None
+
+
+# ---------------------------------------------------------------------------
+# Citable source presence (FR-005, revised 2026-07-10)
+# ---------------------------------------------------------------------------
+
+class TestCitableSourcePresence:
+    def test_no_url_among_fragments_is_not_citable(self):
+        rules = _import_rules()
+        SearchResult = _import_search_result()
+        SearchResultSet = _import_search_result_set()
+        results = [
+            SearchResult(fragment_id="f1", score=0.90, rank=1, metadata={}),
+        ]
+        result_set = SearchResultSet(results=results, threshold=0.65)
+        assert rules.has_citable_source(result_set) is False
+
+    def test_at_least_one_url_is_citable(self):
+        rules = _import_rules()
+        SearchResult = _import_search_result()
+        SearchResultSet = _import_search_result_set()
+        results = [
+            SearchResult(fragment_id="f1", score=0.90, rank=1, metadata={}),
+            SearchResult(
+                fragment_id="f2",
+                score=0.70,
+                rank=2,
+                metadata={"url": "https://utn.edu.ar/a"},
+            ),
+        ]
+        result_set = SearchResultSet(results=results, threshold=0.65)
+        assert rules.has_citable_source(result_set) is True
+
+    def test_empty_results_are_not_citable(self):
+        rules = _import_rules()
+        SearchResultSet = _import_search_result_set()
+        result_set = SearchResultSet(results=[], threshold=0.65)
+        assert rules.has_citable_source(result_set) is False
+
+    def test_threshold_sufficient_without_url_yields_refusal(self):
+        """Context above threshold but with no citable URL → treated as
+        insufficient context (FR-005 rev.), not an uncited answer."""
+        rules = _import_rules()
+        SearchResult = _import_search_result()
+        SearchResultSet = _import_search_result_set()
+        results = [
+            SearchResult(fragment_id="f1", score=0.90, rank=1, metadata={}),
+        ]
+        result_set = SearchResultSet(results=results, threshold=0.65)
+        assert rules.is_context_sufficient(result_set) is True
+        assert rules.has_citable_source(result_set) is False
+        combined = rules.is_context_sufficient(result_set) and rules.has_citable_source(
+            result_set
+        )
+        assert combined is False
+
+    def test_threshold_sufficient_with_url_yields_answer(self):
+        """Context above threshold with at least one citable URL → the
+        combined check passes and an answer with a source is produced."""
+        rules = _import_rules()
+        SearchResult = _import_search_result()
+        SearchResultSet = _import_search_result_set()
+        results = [
+            SearchResult(
+                fragment_id="f1",
+                score=0.90,
+                rank=1,
+                metadata={"url": "https://utn.edu.ar/a"},
+            ),
+        ]
+        result_set = SearchResultSet(results=results, threshold=0.65)
+        combined = rules.is_context_sufficient(result_set) and rules.has_citable_source(
+            result_set
+        )
+        assert combined is True
