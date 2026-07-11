@@ -23,7 +23,7 @@ contexto institucional proporcionado a continuación. No inventes datos, fechas 
 ni procedimientos que no estén respaldados por el contexto. Si la información \
 no está en el contexto, no la incluyas en tu respuesta.
 
-Sé breve y directo: respondé en no más de 3 oraciones.
+Sé breve y directo: respondé en no más de 2 oraciones.
 
 Contexto institucional:
 {context}
@@ -75,3 +75,4 @@ class PromptBuilder:
 
         context = "\n\n".join(context_blocks)
         return _SYSTEM_TEMPLATE.format(context=context, question=question)
+    
