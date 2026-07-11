@@ -1,11 +1,18 @@
 # UTN Assistant — Test Suite Reference
 
-**Traceability**: T079  
+**Traceability**: T079, T111  
 **Feature**: [spec.md](../../specs/001-institutional-assistant/spec.md)  
-**Date**: 2026-06-30
+**Date**: 2026-06-30 (revised 2026-07-10)
 
 This document maps every test file to the spec FRs, user stories, and
 constitution business rules it validates.
+
+**2026-07-10 revision**: FR-005 was revised so that threshold-sufficient
+context with no citable source URL among retrieved fragments falls back to
+the insufficient-context refusal (see `test_citation_rules.py` and
+`integration/rag/test_query_refusal.py`). FR-027/FR-028 scope the current
+corpus to UTN-FRBA, Ingenieria en Sistemas only; SC-002 was revised and
+SC-009 added accordingly (see `config/sources.yaml`, FR-028).
 
 ---
 
@@ -45,7 +52,7 @@ tests/
 |------|-----|---------|----------------|
 | `unit/rag/domain/test_user_query.py` | FR-002 | US1 | Question validation: non-empty, ≤2000 chars, area optional, max_results ≤10 |
 | `unit/rag/domain/test_context_sufficiency.py` | FR-006, FR-007 | US2 | Threshold refusal; exact refusal text |
-| `unit/rag/domain/test_citation_rules.py` | FR-005, FR-008 | US3 | Citations from retrieved fragments only; title when available |
+| `unit/rag/domain/test_citation_rules.py` | FR-005, FR-005 rev., FR-008 | US3 | Citations from retrieved fragments only; title when available; threshold-sufficient context without a citable URL → refusal (T109) |
 | `unit/rag/domain/test_index_update_run.py` | FR-016, FR-017 | US4 | State machine; only COMPLETADO promotes; counts required |
 | `unit/rag/domain/test_area_filter.py` | FR-009, FR-010 | US6 | All 4 areas valid; invalid string rejected; no filter searches all |
 
@@ -86,7 +93,7 @@ tests/
 | `integration/vectorstore/test_chroma_repository.py` | FR-003, FR-009, FR-013, FR-019 | US1, US6 | Real ChromaDB; area filter; upsert idempotent; delete |
 | `integration/processor/test_index_loader.py` | FR-013, FR-015 | US4 | Document → fragments → staging; metadata flows; unusable doc skipped |
 | `integration/rag/test_query_success.py` | FR-003, FR-005 | US1, US3 | Real ChromaDB + mocked LLM; answer + citation returned |
-| `integration/rag/test_query_refusal.py` | FR-006, FR-007 | US2 | Below-threshold and empty-index refusal; exact text; LLM not called |
+| `integration/rag/test_query_refusal.py` | FR-005 rev., FR-006, FR-007 | US2 | Below-threshold and empty-index refusal; exact text; LLM not called; relevant context with no citable URL → refusal (T110) |
 | `integration/rag/test_citation_integrity.py` | FR-005, FR-008 | US3 | Cited URLs from retrieved context only; context_sufficient ↔ sources non-empty |
 | `integration/indexing/test_safe_reindex.py` | FR-016 | US4 | Failed run does not replace active index; previous index queryable after failure |
 | `integration/rag/test_area_filtering.py` | FR-009, FR-010 | US6 | Area filter restricts to selected area; EXTENSION empty → refusal |
@@ -117,6 +124,8 @@ tests/
 | Citation integrity | `unit/rag/domain/test_citation_rules.py`, `integration/rag/test_citation_integrity.py` |
 | Index preservation on failure | `unit/vectorstore/test_index_staging.py`, `integration/indexing/test_safe_reindex.py` |
 | Similarity-threshold refusal | `unit/rag/domain/test_context_sufficiency.py`, `integration/rag/test_query_refusal.py` |
+| Citable-source refusal (FR-005 rev. 2026-07-10) | `unit/rag/domain/test_citation_rules.py::TestCitableSourcePresence`, `integration/rag/test_query_refusal.py::TestQueryRefusalNoCitableSource` |
+| FRBA-only corpus scope (FR-027/FR-028) | `config/sources.yaml` (only `regional` referring to UTN-FRBA is configured); acceptance validation via SC-009 in `validation_report.md` |
 
 ---
 
