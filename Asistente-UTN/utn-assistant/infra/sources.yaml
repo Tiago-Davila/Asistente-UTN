@@ -1,0 +1,174 @@
+# UTN Assistant — source configuration (UTN-FRBA, Ing. en Sistemas de Información)
+#
+# Scope: current version is restricted to UTN-FRBA, Departamento de Ingeniería
+# en Sistemas de Información (FR-028). No other regionales/departments.
+# Sources below are derived from the "Contexto Chatbot" document, keeping only
+# public, static, indexable HTML pages under frba.utn.edu.ar (FR-011, FR-012).
+#
+# Fields per source:
+#   id                  - Stable identifier (slug, unique).
+#   url                 - Public page or section URL.
+#   title_hint          - Optional human-readable title hint.
+#   area                - One of: ACADEMICA, ADMINISTRATIVA, BIENESTAR, EXTENSION
+#   regional            - Optional regional name (e.g. "Regional Buenos Aires").
+#   department          - Optional department name.
+#   source_type         - WEB (only supported type in v1).
+#   active              - Whether this source is included in update runs.
+#   requires_javascript - Set to true only for pages that need browser rendering.
+#   crawl_delay_seconds - Optional per-source override; defaults to global setting.
+#   include_patterns    - Optional list of URL path patterns to include.
+#   exclude_patterns    - Optional list of URL path patterns to exclude.
+#
+# NOTE on excluded PDF entries (kept out on purpose, see chat 2026-07-10):
+#   - SIU Guaraní (guarani.frba.utn.edu.ar): login/JS app, not static HTML;
+#     scraping conflicts with FR-012 and likely robots.txt. Left as active:false.
+#   - YouTube charla informativa: multimedia, not an indexable WEB source.
+#   - Emails/phones/office rooms: contact data, not URLs — not sources.
+
+sources:
+  # ---------------------------------------------------------------------------
+  # INGRESANTES
+  # ---------------------------------------------------------------------------
+  - id: sistemas-ingreso-isi
+    url: https://frba.utn.edu.ar/ingreso/ingenieria-en-sistemas-de-informacion/
+    title_hint: "Ingreso — Ingeniería en Sistemas de Información"
+    area: ACADEMICA
+    regional: "Regional Buenos Aires"
+    department: "Ingeniería en Sistemas de Información"
+    source_type: WEB
+    active: true
+    requires_javascript: false
+    crawl_delay_seconds: 1.5
+
+  - id: sistemas-plan-estudios-2023
+    url: https://frba.utn.edu.ar/sistemas/plan-de-estudios-2023/
+    title_hint: "Plan de Estudios 2023 — Ingeniería en Sistemas de Información"
+    area: ACADEMICA
+    regional: "Regional Buenos Aires"
+    department: "Ingeniería en Sistemas de Información"
+    source_type: WEB
+    active: true
+    requires_javascript: false
+    crawl_delay_seconds: 1.5
+
+  - id: sistemas-disenio-curricular
+    url: https://frba.utn.edu.ar/sistemas/disenio-curricular/
+    title_hint: "Diseño curricular y título intermedio — Sistemas"
+    area: ACADEMICA
+    regional: "Regional Buenos Aires"
+    department: "Ingeniería en Sistemas de Información"
+    source_type: WEB
+    active: true
+    requires_javascript: false
+    crawl_delay_seconds: 1.5
+
+  - id: sistemas-isi-inicio
+    url: https://frba.utn.edu.ar/sistemas/ing-en-sistemas-de-informacion/
+    title_hint: "Ing. en Sistemas de Información — Departamento"
+    area: ACADEMICA
+    regional: "Regional Buenos Aires"
+    department: "Ingeniería en Sistemas de Información"
+    source_type: WEB
+    active: true
+    requires_javascript: false
+    crawl_delay_seconds: 1.5
+
+  # ---------------------------------------------------------------------------
+  # ALUMNOS — Trámites / Administrativo
+  # ---------------------------------------------------------------------------
+  - id: estudiantes-tramites-alumnos
+    url: https://frba.utn.edu.ar/estudiantes/tramites/alumnos/
+    title_hint: "Trámites Alumnos — Dirección de Alumnos"
+    area: ADMINISTRATIVA
+    regional: "Regional Buenos Aires"
+    department: "Ingeniería en Sistemas de Información"
+    source_type: WEB
+    active: true
+    requires_javascript: false
+    crawl_delay_seconds: 1.5
+
+  - id: estudiantes-tramites
+    url: https://frba.utn.edu.ar/estudiantes/tramites/
+    title_hint: "Trámites — Estudiantes UTN-FRBA"
+    area: ADMINISTRATIVA
+    regional: "Regional Buenos Aires"
+    department: "Ingeniería en Sistemas de Información"
+    source_type: WEB
+    active: true
+    requires_javascript: false
+    crawl_delay_seconds: 1.5
+
+  - id: ventanilla-virtual
+    url: https://frba.utn.edu.ar/ventanilla-virtual/
+    title_hint: "Ventanilla Virtual — Trámites y consultas"
+    area: ADMINISTRATIVA
+    regional: "Regional Buenos Aires"
+    department: "Ingeniería en Sistemas de Información"
+    source_type: WEB
+    active: true
+    requires_javascript: false
+    crawl_delay_seconds: 1.5
+
+  - id: sistemas-pps
+    url: https://frba.utn.edu.ar/sistemas/practica-profesional-supervisada-2/
+    title_hint: "Práctica Profesional Supervisada (PPS) — Sistemas"
+    area: ACADEMICA
+    regional: "Regional Buenos Aires"
+    department: "Ingeniería en Sistemas de Información"
+    source_type: WEB
+    active: true
+    requires_javascript: false
+    crawl_delay_seconds: 1.5
+
+  - id: cienciasbasicas-contacto
+    url: https://frba.utn.edu.ar/cienciasbasicas/contacto/
+    title_hint: "Matriculación Ciencias Básicas — Contacto"
+    area: ACADEMICA
+    regional: "Regional Buenos Aires"
+    department: "Ingeniería en Sistemas de Información"
+    source_type: WEB
+    active: true
+    requires_javascript: false
+    crawl_delay_seconds: 1.5
+
+  # ---------------------------------------------------------------------------
+  # BIENESTAR
+  # ---------------------------------------------------------------------------
+  - id: estudiantes-becas
+    url: https://frba.utn.edu.ar/estudiantes/becas/
+    title_hint: "Becas — Bienestar Estudiantil UTN-FRBA"
+    area: BIENESTAR          # corregido: antes estaba como EXTENSION
+    regional: "Regional Buenos Aires"
+    department: "Ingeniería en Sistemas de Información"
+    source_type: WEB
+    active: true
+    requires_javascript: false
+    crawl_delay_seconds: 1.5
+    exclude_patterns:
+      - /noticias/
+      - /eventos/
+
+  # ---------------------------------------------------------------------------
+  # EXCLUIDAS — presentes en el PDF pero fuera de alcance técnico.
+  # Se dejan como active:false para que la decisión quede trazable (no perdida).
+  # ---------------------------------------------------------------------------
+  - id: guarani-autogestion-grado
+    url: https://guarani.frba.utn.edu.ar/autogestion/grado/acceso
+    title_hint: "SIU Guaraní — Autogestión Grado (NO indexable: login/JS)"
+    area: ADMINISTRATIVA
+    regional: "Regional Buenos Aires"
+    department: "Ingeniería en Sistemas de Información"
+    source_type: WEB
+    active: false
+    requires_javascript: true
+
+  - id: guarani-aspirantes-noticias
+    url: https://guarani.frba.utn.edu.ar/autogestion/aspirantes/noticias
+    title_hint: "SIU Guaraní — Cartelera aspirantes (NO indexable: login/JS)"
+    area: ACADEMICA
+    regional: "Regional Buenos Aires"
+    department: "Ingeniería en Sistemas de Información"
+    source_type: WEB
+    active: false
+    requires_javascript: true
+
