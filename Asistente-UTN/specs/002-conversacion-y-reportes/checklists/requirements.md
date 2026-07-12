@@ -54,12 +54,28 @@ Validacion completa: todos los items pasan. Spec lista para `/speckit-plan`.
    `session_id`, construida solo desde el historial registrado por el sistema.
    Consecuencia de alcance: las consultas stateless NO son exportables.
 
+### Clarificaciones 2026-07-12 (sesion `/speckit-clarify`, 5 preguntas)
+
+4. **FR-208a — tope de turnos por sesion**: default 50, configurable. Al alcanzarlo la sesion
+   rechaza turnos nuevos; NO descarta los viejos. Acota memoria y mantiene el PDF completo.
+5. **FR-207 / FR-207a — que se registra**: los turnos completados SI, incluidos los rechazos por
+   contexto insuficiente (son respuestas legitimas). Los errores de infraestructura NO: no consumen
+   cupo, no salen en el PDF, no alimentan la reformulacion. Resolvio una contradiccion interna.
+6. **FR-209b / FR-209c — reformulacion**: no corre en el primer turno. Si falla, degrada a stateless
+   con la pregunta original e informa; nunca falla la consulta ni inventa respuesta.
+7. **SC-201 — medicion**: conjunto fijo de 20 pares, verificacion automatizada por coincidencia de
+   fuentes citadas, umbral 18/20. El conjunto se define en `/speckit-plan`.
+8. **FR-205a — concurrencia**: un turno a la vez por sesion; consulta concurrente sobre la misma
+   sesion se rechaza con "sesion ocupada". Sesiones distintas siguen en paralelo.
+
 ### Consecuencias de alcance que el plan debe respetar
 
 - Exportar requiere sesion. No existe exportacion de respuesta aislada.
 - Una conversacion no exportada antes de un reinicio se pierde (aceptado).
 - Cualquier diseno que pase historial crudo al generador es violacion constitucional (FR-209a).
-- El limite de historial (FR-208) acota lo que se envia al pipeline, NO lo que se registra
-  ni lo que se exporta: el PDF incluye todos los turnos de la sesion.
+- El limite de historial (FR-208, default 5 turnos) acota lo que se ENVIA al pipeline. El tope de
+  sesion (FR-208a, default 50 turnos) acota lo que se GUARDA. Son dos limites distintos; el PDF
+  incluye todos los turnos guardados de la sesion.
+- El conjunto de evaluacion de 20 pares para SC-201 debe definirse durante `/speckit-plan`.
 - El TTL por defecto (30 min) y el limite de historial (5 turnos) quedaron definidos como
   valores por defecto configurables, cumpliendo el follow-up TODO de la constitucion v1.1.0.
