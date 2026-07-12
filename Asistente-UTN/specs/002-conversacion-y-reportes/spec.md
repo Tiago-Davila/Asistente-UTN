@@ -36,6 +36,16 @@ de forma independiente sin colisiones de identificadores.
 Las referencias a requisitos de la Fase 1 se escriben siempre como
 "FR-0xx del spec 001" para evitar ambiguedad.
 
+## Clarifications
+
+### Session 2026-07-12
+
+- Q: Debe haber un limite de turnos almacenados por sesion, distinto del limite de contexto de FR-208? -> A: Si. Tope configurable, default 50 turnos. Al alcanzarlo la sesion no acepta nuevos turnos y devuelve un error claro pidiendo abrir una sesion nueva. No se descartan turnos: el PDF sigue conteniendo la conversacion completa.
+- Q: Como se manejan dos consultas concurrentes sobre el mismo session_id? -> A: No se permiten. Una sesion procesa un solo turno a la vez; si llega una consulta mientras otra esta en curso para esa misma sesion, se rechaza con un error claro de sesion ocupada. Esto elimina la carrera entre la reformulacion y el registro del turno. Sesiones distintas siguen procesandose en paralelo, por lo que NFR-205 no se ve afectado.
+- Q: Como se verifica SC-201 (90% de consultas de seguimiento resueltas sobre el tema correcto)? -> A: Con un conjunto fijo de 20 pares (pregunta inicial + pregunta de seguimiento con referencia anaforica) definido durante la planificacion sobre temas del corpus FRBA-Sistemas. La verificacion es automatizada: se comparan las fuentes citadas en la respuesta de seguimiento contra las fuentes esperadas de cada par. Umbral: 18 de 20. Se asume la limitacion de que esto mide un proxy (coincidencia de fuentes) y no correccion semantica plena.
+- Q: Si el paso de reformulacion de la consulta (FR-209) falla o no esta disponible, que hace el sistema? -> A: Degrada a stateless: busca en el corpus con la pregunta original sin reformular, responde igual e informa que no se pudo usar el contexto previo. La consulta nunca se pierde. Si la pregunta dependia del contexto, el resultado probable es un rechazo por contexto insuficiente, que es un fallo honesto y seguro.
+- Q: Un turno que falla con error controlado (indice no listo, generador caido), se registra en el historial? -> A: No. Un error de infraestructura no es un turno de conversacion: no entra al historial, no consume cupo del tope de FR-208a, no aparece en el PDF y no alimenta la reformulacion. Distinto es el rechazo por contexto insuficiente, que SI se registra por ser una respuesta legitima del asistente.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Conversacion con referencias a turnos anteriores (Priority: P1)
@@ -79,6 +89,8 @@ previo.
 2. **Given** una sesion activa, **When** el usuario solicita borrarla, **Then** el historial se elimina y una consulta posterior con ese `session_id` se trata como sesion inexistente.
 3. **Given** una sesion cuyo TTL configurado ya vencio, **When** el usuario envia un nuevo turno con ese `session_id`, **Then** el sistema responde la consulta como stateless e informa que la sesion expiro.
 4. **Given** un `session_id` con formato invalido o inexistente, **When** el usuario envia una consulta, **Then** el sistema devuelve un error de validacion claro y no crea la sesion implicitamente.
+5. **Given** una sesion que alcanzo el tope de turnos almacenados (FR-208a), **When** el usuario envia un turno mas, **Then** el sistema lo rechaza con un error claro invitando a abrir una sesion nueva, y conserva intactos los turnos ya registrados.
+6. **Given** una sesion con un turno en curso, **When** llega una segunda consulta para esa misma sesion, **Then** el sistema la rechaza con un error de sesion ocupada (FR-205a).
 
 ---
 
@@ -174,12 +186,15 @@ citadas.
 - **Exportar PDF de una conversacion con turnos de rechazo**: permitido; el PDF refleja cada rechazo tal cual, sin fuentes fabricadas (ver US6 escenario 2).
 - **Intentar exportar una consulta stateless**: no es exportable, porque el sistema no guardo nada. Error claro indicando que exportar requiere una sesion (FR-224).
 - **Reinicio del servicio con sesiones activas**: todas las sesiones se pierden (historial solo en memoria, FR-214). El siguiente turno con un `session_id` previo se trata como sesion expirada y se responde stateless (FR-214a); un intento de exportacion devuelve "conversacion no disponible" (FR-224a).
-- **Primer turno de una sesion recien creada**: no hay historial; se comporta como stateless pero registra el turno.
-- **Dos consultas concurrentes con el mismo `session_id`**: ambas se responden; el historial resultante conserva ambos turnos sin corromperse.
+- **Primer turno de una sesion recien creada**: no hay historial; no se reformula (FR-209b) y se comporta como stateless, pero registra el turno.
+- **El paso de reformulacion falla o no esta disponible**: se busca con la pregunta original y se responde igual, informando que no se pudo aplicar el contexto previo (FR-209c). Si la pregunta dependia del contexto, el resultado esperado es el rechazo aprobado, nunca una respuesta inventada.
+- **Dos consultas concurrentes con el mismo `session_id`**: no se permiten. La segunda se rechaza con un error claro de sesion ocupada (FR-205a) mientras la primera esta en curso. Esto evita que un turno se reformule contra un historial que todavia no incluye al turno anterior. Sesiones distintas si se procesan en paralelo.
 - **Sesion sin actividad que vence mientras no hay trafico**: la sesion se considera expirada por TTL aunque nadie la consulte; su historial deja de estar disponible.
+- **Sesion que alcanza el tope de turnos almacenados (FR-208a, default 50)**: la sesion deja de aceptar turnos nuevos y devuelve un error claro invitando a abrir una sesion nueva. Los turnos ya registrados NO se descartan y la conversacion sigue siendo exportable completa.
 - **Reporte PDF de una corrida de indexacion con cero documentos indexados**: el PDF se genera e informa explicitamente el resultado vacio, en lugar de fallar.
 - **Conversacion larga o con muchas fuentes al exportar**: el PDF pagina el contenido; no se truncan turnos ni listas de fuentes citadas. El PDF exporta TODOS los turnos de la sesion, no solo los que entran en el limite de contexto de FR-208 (el limite acota lo que se envia al pipeline, no lo que se registra ni lo que se exporta).
-- **Consulta con `session_id` mientras el indice no esta listo**: se aplica el error de indice no disponible de la Fase 1; el turno no se registra como respuesta valida.
+- **Consulta con `session_id` mientras el indice no esta listo**: se aplica el error de indice no disponible de la Fase 1. El turno NO se registra en el historial (FR-207a): no consume cupo, no aparece en el PDF y no afecta la reformulacion. El usuario reintenta y la conversacion sigue intacta.
+- **Turno de rechazo por contexto insuficiente**: SI se registra (FR-207). Es una respuesta legitima del asistente, no una falla, y aparece en el PDF como tal.
 
 ## Requirements *(mandatory)*
 
@@ -192,10 +207,15 @@ citadas.
 - **FR-203**: System MUST allow a user to explicitly delete a session, discarding its history immediately.
 - **FR-204**: System MUST expire sessions after a configurable TTL (Time To Live), measured from the last activity in the session. Default: 30 minutes.
 - **FR-205**: System MUST reject a malformed or unknown `session_id` with a clear validation error, and MUST NOT create the session implicitly.
+- **FR-205a**: A session MUST process one turn at a time. If a query arrives for a session that already has a turn in flight, System MUST reject it with a clear "session busy" error rather than processing both. Rationale: prevents a turn from being reformulated against history that does not yet include the preceding turn. Concurrency ACROSS different sessions MUST remain unaffected (see NFR-205). [Clarificado 2026-07-12]
 - **FR-206**: When a session has expired, System MUST answer the incoming query as stateless and MUST inform the user that the session expired, instead of failing the query.
-- **FR-207**: System MUST record each turn of a session as the pair (user question, assistant answer).
+- **FR-207**: System MUST record each COMPLETED turn of a session as the pair (user question, assistant answer). A turn is completed when the assistant produced an answer, including an insufficient-context refusal (FR-007 del spec 001) — a refusal is a legitimate answer and MUST be recorded.
+- **FR-207a**: A turn that ends in a controlled infrastructure error (index not ready, generator unavailable, validation error) MUST NOT be recorded in the history. Such a turn MUST NOT consume the per-session turn cap (FR-208a), MUST NOT appear in the exported PDF, and MUST NOT feed the query reformulation (FR-209). The user can simply retry and the conversation continues unaffected. [Clarificado 2026-07-12]
 - **FR-208**: System MUST enforce a configurable limit on how much history is included as context in each query. Default: the 5 most recent turns. When the limit is exceeded, only the most recent turns within the limit MUST be included; older turns MUST be dropped from the context without raising an error.
+- **FR-208a**: System MUST enforce a configurable maximum number of turns STORED per session. Default: 50 turns. This is distinct from FR-208 (which caps how much history is SENT to the pipeline); FR-208a caps how much is KEPT in memory. When a session reaches the cap, System MUST reject further turns with a clear error inviting the user to start a new session, and MUST NOT discard older turns. Rationale: bounds memory under NFR-205 (100 concurrent sessions) and keeps the exported PDF a complete record, consistent with the no-truncation guarantee in Edge Cases. [Clarificado 2026-07-12]
 - **FR-209**: System MUST use conversation history ONLY to reformulate the incoming question into a self-contained query before retrieval (e.g. "y como es el tramite?" -> "como es el tramite de equivalencias?"). The history text MUST NOT be included in the generation prompt. The generator MUST see only the reformulated question and the corpus fragments retrieved for it. [Decidido 2026-07-12]
+- **FR-209b**: Reformulation runs only when the session already has at least one recorded turn. On the first turn of a session there is no history, so the question MUST be used as-is.
+- **FR-209c**: If reformulation fails or is unavailable, System MUST degrade to stateless behavior: retrieve using the ORIGINAL question, answer normally, and inform the user that prior context could not be applied. System MUST NOT fail the query. If the question depended on prior context, the expected outcome is the approved insufficient-context refusal — an honest failure, never a fabricated answer. [Clarificado 2026-07-12]
 - **FR-209a**: Because the generator never receives the history (FR-209), the guarantee that history cannot become a knowledge source is STRUCTURAL, not prompt-dependent. Any design that passes raw history to the generator MUST be rejected in review as a constitutional violation of FR-210.
 - **FR-210**: Every institutional claim in an answer MUST originate from content retrieved from the indexed corpus in that same turn. System MUST NOT present information taken from the history — including user-supplied assertions — as institutional fact.
 - **FR-211**: When retrieved corpus context is insufficient, System MUST return the approved refusal text (FR-007 del spec 001) EVEN IF the conversation history appears to contain a relevant answer.
@@ -257,7 +277,7 @@ sesion activa.
 
 ### Measurable Outcomes
 
-- **SC-201**: En pruebas de aceptacion, al menos 90% de las consultas de seguimiento que referencian un turno anterior (ej: "y como es el tramite?") se responden sobre el tema correcto sin que el usuario deba repetir el tema.
+- **SC-201**: Al menos 18 de un conjunto fijo de 20 pares de evaluacion (90%) se responden sobre el tema correcto sin que el usuario deba repetir el tema. Cada par consiste en una pregunta inicial mas una pregunta de seguimiento con referencia anaforica (ej: "y como es el tramite?"), sobre temas del corpus FRBA-Sistemas. El conjunto se define durante la planificacion. La verificacion es automatizada: las fuentes citadas en la respuesta de seguimiento deben coincidir con las fuentes esperadas del par. Limitacion asumida: mide un proxy (coincidencia de fuentes), no correccion semantica plena. [Clarificado 2026-07-12]
 - **SC-202**: 100% de las respuestas dentro de una sesion que se fundan en contenido recuperado incluyen al menos una URL de fuente institucional, igual que en la Fase 1.
 - **SC-203**: 100% de las consultas cuyo respaldo en el corpus es insuficiente devuelven el texto de rechazo aprobado, incluso cuando el historial contiene informacion aparentemente relevante. Cero casos de informacion del historial presentada como institucional.
 - **SC-204**: 100% de las consultas sin `session_id` producen el mismo comportamiento observable que en la Fase 1 (retrocompatibilidad verificada por regresion).
@@ -274,6 +294,9 @@ sesion activa.
 
 - **TTL por defecto**: 30 minutos desde la ultima actividad. Valor configurable; se eligio como default razonable para una consulta institucional puntual. La constitucion v1.1.0 exige que sea configurable, no fija el numero.
 - **Limite de historial por defecto**: los 5 turnos mas recientes. Se eligio turnos (y no tokens) como unidad por ser mas simple de razonar y testear; un limite por tokens puede especificarse mas adelante si el limite por turnos resulta insuficiente.
+- **Dos limites distintos, no confundir** [Clarificado 2026-07-12]: FR-208 acota cuanto historial se ENVIA al pipeline en cada consulta (default 5 turnos). FR-208a acota cuantos turnos se GUARDAN por sesion (default 50). El primero protege la calidad y latencia de la consulta; el segundo protege la memoria y mantiene el PDF exportado como registro completo.
+- **Un turno a la vez por sesion** [Clarificado 2026-07-12]: no se admiten consultas concurrentes sobre el mismo `session_id`. Se acepta el costo de rechazar un doble clic o un reintento apurado, a cambio de eliminar por construccion la carrera entre reformulacion y registro del turno.
+- **Conjunto de evaluacion de seguimiento** [Clarificado 2026-07-12]: SC-201 se mide contra un conjunto fijo de 20 pares definido durante la planificacion, con verificacion automatizada por coincidencia de fuentes citadas. Se asume que esto mide un proxy y no correccion semantica plena.
 - **Sesiones anonimas**: como no hay login (fuera de alcance, igual que en Fase 1), una sesion no se asocia a una identidad de usuario. Quien posee el `session_id` accede al historial de esa sesion. Esto es aceptable porque el despliegue es local y las consultas no son sensibles.
 - **Acceso administrativo**: los reportes PDF de administrador se protegen bajo la misma politica operativa de la Fase 1 (FR-026 del spec 001): entorno controlado u operacion manual, no autenticacion de usuarios.
 - **Interfaz**: el feature se expone por la misma interfaz programatica de la Fase 1. La interfaz grafica web sigue fuera de alcance.
