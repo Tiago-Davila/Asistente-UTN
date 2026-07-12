@@ -31,7 +31,7 @@
 
 **Performance Goals**: [Domain-specific latency, indexing, or retrieval goals or NEEDS CLARIFICATION]
 
-**Constraints**: 100% local runtime, no paid external core services, stateless RAG queries, robots.txt compliance, configured request delays or NEEDS CLARIFICATION
+**Constraints**: 100% local runtime, no paid external core services, RAG queries stateless by default (conversation history is opt-in per session, ephemeral with configurable TTL, and never a knowledge source), robots.txt compliance, configured request delays or NEEDS CLARIFICATION
 
 **Scale/Scope**: [Regional/departments/content volume expected for this feature or NEEDS CLARIFICATION]
 

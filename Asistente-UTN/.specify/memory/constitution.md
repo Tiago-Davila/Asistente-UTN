@@ -1,13 +1,26 @@
 <!--
 Sync Impact Report
-Version change: 1.0.0 -> 1.0.1
-Modified principles:
-- VIII. Escalabilidad sin degradar busqueda -> aclara alcance vigente (FRBA) vs capacidad multi-regional
-Added sections: none
+Version change: 1.0.1 -> 1.1.0 (MINOR: se relaja una restriccion y se agrega una regla sustantiva)
+Modified principles: ninguno. Los Principios I-X permanecen intactos.
+Modified sections:
+- Restricciones de Arquitectura -> la regla "El pipeline RAG MUST ser stateless" pasa a
+  "Estado conversacional OPT-IN por sesion": habilita historial efimero con TTL configurable,
+  sin session_id sigue siendo stateless, y el historial NUNCA es fuente de conocimiento.
+Added sections:
+- Restricciones de Arquitectura -> nueva regla "Generacion de PDF" (local, open source, capa separada).
 Removed sections: none
 Templates requiring updates:
-- .specify/templates/spec-template.md - revisar seccion de alcance
-Follow-up TODOs: definir alcance FRBA en spec.md; hacer URL de fuente obligatoria en RF de respuesta
+- .specify/templates/plan-template.md - ACTUALIZADO: la linea Constraints ya no afirma "stateless RAG queries"
+- .specify/templates/spec-template.md - sin cambios necesarios (no referencia la regla de estado)
+- .specify/templates/tasks-template.md - sin cambios necesarios (no referencia la regla de estado)
+- specs/001-institutional-assistant/plan.md - sin cambios necesarios: describe la Fase 1, que
+  efectivamente es stateless; la Fase 2 debera declarar su propio Constitution Check
+Follow-up TODOs:
+- La Fase 2 MUST definir en spec.md el TTL por defecto de sesion y el limite de turnos de historial.
+- El Principio III enumera las capas vigentes (scraper/processor/vectorstore/rag/api) y no contempla
+  aun las capas de sesion ni de PDF. No hay contradiccion directa (el principio exige separacion, no
+  prohibe capas nuevas), pero si la Fase 2 introduce esas capas, considerar una enmienda MINOR que
+  extienda la tabla del Principio III.
 -->
 # Asistente Inteligente Institucional UTN Constitution
 
@@ -169,10 +182,40 @@ requests para no sobrecargar servidores de la UTN. Las URLs base, politicas de
 delay, parametros de chunking, nombres de modelos, umbrales de similitud y
 opciones de persistencia MUST configurarse centralmente.
 
-El pipeline RAG MUST ser stateless: cada consulta es independiente y esta
-version MUST NOT guardar historial de conversacion. La persistencia se limita al
-corpus indexado, metadata, base vectorial y configuracion operativa aprobada por
-la especificacion.
+### Estado conversacional OPT-IN por sesion
+
+El pipeline RAG MUST ser stateless por defecto. El historial de conversacion es
+una capacidad OPT-IN que MUST activarse explicitamente por sesion y MUST
+respetar estos limites:
+
+- Una consulta sin `session_id` MUST tratarse como stateless, exactamente igual
+  que en la Fase 1. La retrocompatibilidad es total: ningun cliente existente
+  cambia de comportamiento.
+- Cada sesion de conversacion MUST ser efimera y MUST tener un TTL configurable
+  centralmente. Vencido el TTL, el historial MUST descartarse.
+- El historial MUST usarse unicamente como contexto conversacional (por ejemplo,
+  para resolver referencias anaforicas o consultas de seguimiento) y MUST NOT
+  usarse jamas como fuente de conocimiento. Las respuestas MUST seguir fundadas
+  exclusivamente en el corpus indexado, conforme al Principio IX: si el contexto
+  recuperado del corpus es insuficiente, el sistema MUST responder "no tengo
+  informacion sobre eso" aunque el historial contenga informacion aparentemente
+  relevante.
+- La persistencia del historial MUST ser local y MUST NOT depender de servicios
+  externos de pago, en coherencia con el Stack Tecnologico No Negociable.
+
+Fuera del historial de sesion, la persistencia se limita al corpus indexado,
+metadata, base vectorial y configuracion operativa aprobada por la
+especificacion.
+
+### Generacion de PDF
+
+Los reportes y exportaciones en PDF MUST generarse localmente con librerias
+Python open source y MUST NOT depender de servicios externos de generacion o
+renderizado.
+
+La generacion de PDF MUST vivir en una capa de responsabilidad separada. Los
+endpoints FastAPI y el pipeline RAG MUST NOT construir documentos PDF
+directamente: MUST delegar en esa capa, coherente con los Principios II y III.
 
 ## Flujo de Trabajo y Control de Versiones
 
@@ -209,4 +252,4 @@ despues del diseno. Las violaciones MUST documentarse en `plan.md` con
 justificacion y alternativa mas simple rechazada; si contradicen un MUST, la
 feature no puede avanzar sin enmienda constitucional.
 
-**Version**: 1.0.1 | **Ratified**: 2026-06-30 | **Last Amended**: 2026-07-10
+**Version**: 1.1.0 | **Ratified**: 2026-06-30 | **Last Amended**: 2026-07-12
